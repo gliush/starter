@@ -16,16 +16,29 @@ init(_Args) ->
 
     {ok, #state{}}.
 
-handle_call({evaluate, Lang, Code}, _, State) ->
+% BC starts
+handle_call({evaluate, Lang, Code}, _F, State) ->
+    handle_call({evaluate, Lang, Code, []}, _F, State);
+% BC ends 
+
+handle_call({evaluate, Lang, Code, InputFiles}, _, State) ->
 
     {ok, DockerImage} = application:get_env(starter, docker_image),
     {ok, StorageDir} = application:get_env(starter, storage_dir),
 
     UUID = uuid:to_string(uuid:uuid1()),
-    FilePath = lists:concat([StorageDir, "/", UUID]),
-    ok = file:write_file(FilePath, Code),
-    LangCommand = langs:command(Lang, FilePath),
-    Runner = io_lib:format("docker run -v ~s:~s:ro", [StorageDir, StorageDir]),
+
+    % make tmp dir '/var/tmp/starter/UUID' with all the files for the current run
+    % mount this dir as '/var/tmp/starter' and change workdir during docker run
+    % starter point is script with name=UUID
+
+    TmpDir = filename:join(StorageDir, UUID),
+    ok = file:make_dir(TmpDir),
+
+    write_files(TmpDir, [{UUID, Code} | InputFiles]),
+
+    LangCommand = langs:command(Lang, UUID),
+    Runner = io_lib:format("docker run -w ~s -v ~s:~s:ro", [StorageDir, TmpDir, StorageDir]),
     DockerCommand = io_lib:format("~s ~s ~s", [Runner, DockerImage, LangCommand]),
 
     Msg = exec:run(lists:flatten(DockerCommand), [stdout, stderr, sync]),
@@ -46,3 +59,7 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+write_files(TmpDir, InputFiles) ->
+    [ ok = file:write_file(filename:join(TmpDir,P), C) 
+        || {P,  C} <- InputFiles ].

@@ -14,6 +14,7 @@ evaluate_test_() ->
                python_evaluate(Setup),
                php_evaluate(Setup),
                erlang_evaluate(Setup),
+               bash_evaluate(Setup),
                javascript_evaluate(Setup)]}
      end}.
 
@@ -72,4 +73,14 @@ erlang_evaluate(_) ->
             Stdout = proplists:get_value(stdout, Result),
 
             ?assertMatch({match, _}, re:run(Stdout, "1> 777", [global]))
+    end.
+
+bash_evaluate(_) ->
+    fun() ->
+            FileContent = <<"var1=47\nvar2=55\n">>,
+            {ok, Result} = starter_pool:evaluate(bash, "source data.in; echo $var1$var2", [{"data.in", FileContent}]),
+            Stdout = proplists:get_value(stdout, Result),
+            ExpectedStdout = [<<"4755\n">>],
+
+            ?assertEqual(ExpectedStdout, Stdout)
     end.

@@ -19,14 +19,15 @@ init_by_method(Method, Req) ->
     ], jsx:encode(Response), Req),
     {shutdown, Req2, undefined_state}.
 
-% FIXME only post request
 handle(Req, State) ->
     {ok, Body, Req2} = cowboy_req:body(Req),
     Params = jsx:decode(Body),
     Lang = proplists:get_value(<<"language">>, Params),
     Code = proplists:get_value(<<"code">>, Params),
+    InputFilesB64 = proplists:get_value(<<"inputFiles">>, Params, []),
+    InputFiles = lists:map(fun unbase64/1, InputFilesB64),
     % lager:debug(Code),
-    Response = case starter_pool:evaluate(Lang, Code) of
+    Response = case starter_pool:evaluate(Lang, Code, InputFiles) of
         {ok, Result} -> Result;
         {error, Result} -> Result
     end,
@@ -39,3 +40,8 @@ handle(Req, State) ->
 
 terminate(_Reason, _Req, _State) ->
     ok.
+
+unbase64({FileNameB, B64B}) -> 
+    FileName = binary_to_list(FileNameB),
+    B64 = binary_to_list(B64B),
+    {filename:basename(FileName), base64:decode_to_string(B64)}.

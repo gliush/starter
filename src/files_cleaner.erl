@@ -40,7 +40,7 @@ handle_cast(_Msg, State) ->
 handle_info(remove, OldTimer) ->
     erlang:cancel_timer(OldTimer),
     {ok, StorageDir} = application:get_env(starter, storage_dir),
-    Cmd = lists:concat(["find ", StorageDir, " -type f -mmin +1 -delete"]),
+    Cmd = lists:concat(["find ", StorageDir, " -mindepth 1 -type d -mmin +5 -exec rm -r {} +"]),
     exec:run(Cmd, [stdout, stderr, sync]),
     %% lager:debug("~p", [Result]),
 
