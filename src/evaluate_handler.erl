@@ -13,7 +13,7 @@ init(_Type, Req, _Opts) ->
 init_by_method(<<"POST">>, Req) ->
     {ok, Req, undefined_state};
 init_by_method(Method, Req) ->
-    Response = {<<"error">>, list_to_binary("Incorrect method used: " ++ atom_to_list(Method) ++ ".")},
+    Response = [{<<"error">>, list_to_binary("Incorrect method used: " ++ binary_to_list(Method))}],
     {ok, Req2} = cowboy_req:reply(400, [
         {<<"content-type">>, <<"application/json">>}
     ], jsx:encode(Response), Req),
